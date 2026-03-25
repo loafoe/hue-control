@@ -1,4 +1,4 @@
-# Hue Control & MCP Server (Go)
+# Hue Control for Humans and AIs
 
 A robust tool for Philips Hue, written in Go. It operates in two modes:
 1. **CLI Mode:** Directly control your lights from the command line.
