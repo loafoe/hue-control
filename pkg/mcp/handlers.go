@@ -24,7 +24,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	type emptyArgs struct{}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_all_lights",
-		Description: "Get information about all lights connected to the Hue bridge.",
+		Description: "List all lights with their UUIDs, names, and current state. Call this first to discover light IDs needed by other tools.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		lights, err := client.GetLights()
 		if err != nil {
@@ -37,11 +37,11 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 2. Get Light
 	type getLightArgs struct {
-		LightID string `json:"light_id" jsonschema:"description:The UUID of the light"`
+		LightID string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_light",
-		Description: "Get detailed information about a specific light.",
+		Description: "Get detailed information about a specific light including color, brightness, and capabilities.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args getLightArgs) (*mcp.CallToolResult, any, error) {
 		lights, err := client.GetLights()
 		if err != nil {
@@ -59,7 +59,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 3. Turn On Light
 	type lightIDArgs struct {
-		LightID string `json:"light_id" jsonschema:"description:The UUID of the light"`
+		LightID string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "turn_on_light",
@@ -92,12 +92,12 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 5. Set Brightness
 	type setBrightnessArgs struct {
-		LightID    string `json:"light_id" jsonschema:"description:The UUID of the light"`
-		Brightness int    `json:"brightness" jsonschema:"description:Brightness level (0-100)"`
+		LightID    string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
+		Brightness int    `json:"brightness" jsonschema:"description:Brightness level 0-100 (0=off, 50=half, 100=full)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_brightness",
-		Description: "Set the brightness of a light.",
+		Description: "Set light brightness. Also turns the light on if it was off.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setBrightnessArgs) (*mcp.CallToolResult, any, error) {
 		if args.Brightness < 0 || args.Brightness > 100 {
 			return errorResult(fmt.Errorf("brightness must be between 0 and 100")), nil, nil
@@ -116,14 +116,14 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 6. Set Color RGB
 	type setColorRGBArgs struct {
-		LightID string `json:"light_id" jsonschema:"description:The UUID of the light"`
-		Red     int    `json:"red" jsonschema:"description:Red value (0-255)"`
-		Green   int    `json:"green" jsonschema:"description:Green value (0-255)"`
-		Blue    int    `json:"blue" jsonschema:"description:Blue value (0-255)"`
+		LightID string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
+		Red     int    `json:"red" jsonschema:"description:Red value 0-255"`
+		Green   int    `json:"green" jsonschema:"description:Green value 0-255"`
+		Blue    int    `json:"blue" jsonschema:"description:Blue value 0-255"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_color_rgb",
-		Description: "Set light color using RGB values.",
+		Description: "Set light to a specific RGB color. For common colors, consider set_color_preset instead. Also turns the light on.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setColorRGBArgs) (*mcp.CallToolResult, any, error) {
 		xy := color.RGBToXY(args.Red, args.Green, args.Blue)
 		update := openhue.LightPut{
@@ -144,12 +144,12 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 7. Set Color Temperature
 	type setColorTemperatureArgs struct {
-		LightID     string `json:"light_id" jsonschema:"description:The UUID of the light"`
-		Temperature int    `json:"temperature" jsonschema:"description:Color temperature in Kelvin (2000-6500)"`
+		LightID     string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
+		Temperature int    `json:"temperature" jsonschema:"description:Color temperature in Kelvin: 2000=warm candlelight, 2700=soft white, 4000=neutral, 5000=cool daylight, 6500=bright blue-white"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_color_temperature",
-		Description: "Set the color temperature of a light in Kelvin.",
+		Description: "Set white color temperature. Lower values are warmer/orange, higher values are cooler/blue. Also turns the light on.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setColorTemperatureArgs) (*mcp.CallToolResult, any, error) {
 		if args.Temperature < 2000 || args.Temperature > 6500 {
 			return errorResult(fmt.Errorf("temperature must be between 2000K and 6500K")), nil, nil
@@ -172,7 +172,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	// 8. Get All Groups (Rooms and Zones)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_all_groups",
-		Description: "Get information about all groups (rooms and zones).",
+		Description: "List all rooms AND zones combined with their IDs. Use this when you need to control any group regardless of type. For only rooms or zones, use get_all_rooms or get_all_zones.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		rooms, err := client.GetRooms()
 		if err != nil {
@@ -198,7 +198,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	// 9. Get All Rooms
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_all_rooms",
-		Description: "Get information about all rooms.",
+		Description: "List all rooms (physical spaces like 'Living Room', 'Bedroom') with their IDs. Each light belongs to exactly one room. Use room IDs with group control tools.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		rooms, err := client.GetRooms()
 		if err != nil {
@@ -211,7 +211,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	// 10. Get All Zones
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_all_zones",
-		Description: "Get information about all zones.",
+		Description: "List all zones (cross-room groupings like 'Downstairs', 'All Lights') with their IDs. Zones can span multiple rooms. Use zone IDs with group control tools.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		zones, err := client.GetZones()
 		if err != nil {
@@ -223,11 +223,11 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 11. Turn On Group
 	type groupIDArgs struct {
-		GroupID string `json:"group_id" jsonschema:"description:The UUID of the room or zone"`
+		GroupID string `json:"group_id" jsonschema:"description:The UUID of the room or zone (use get_all_rooms, get_all_zones, or get_all_groups to discover IDs)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "turn_on_group",
-		Description: "Turn on all lights in a specific group (room or zone).",
+		Description: "Turn on all lights in a room or zone at once.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args groupIDArgs) (*mcp.CallToolResult, any, error) {
 		groupedLightID, err := client.GetGroupedLightByResourceID(args.GroupID)
 		if err != nil {
@@ -246,7 +246,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	// 12. Turn Off Group
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "turn_off_group",
-		Description: "Turn off all lights in a specific group (room or zone).",
+		Description: "Turn off all lights in a room or zone at once.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args groupIDArgs) (*mcp.CallToolResult, any, error) {
 		groupedLightID, err := client.GetGroupedLightByResourceID(args.GroupID)
 		if err != nil {
@@ -264,12 +264,12 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 13. Set Group Brightness
 	type setGroupBrightnessArgs struct {
-		GroupID    string `json:"group_id" jsonschema:"description:The UUID of the room or zone"`
-		Brightness int    `json:"brightness" jsonschema:"description:Brightness level (0-100)"`
+		GroupID    string `json:"group_id" jsonschema:"description:The UUID of the room or zone (use get_all_rooms, get_all_zones, or get_all_groups to discover IDs)"`
+		Brightness int    `json:"brightness" jsonschema:"description:Brightness level 0-100 (0=off, 50=half, 100=full)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_group_brightness",
-		Description: "Set the brightness of all lights in a group.",
+		Description: "Set brightness for all lights in a room or zone. Also turns lights on if they were off.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setGroupBrightnessArgs) (*mcp.CallToolResult, any, error) {
 		if args.Brightness < 0 || args.Brightness > 100 {
 			return errorResult(fmt.Errorf("brightness must be between 0 and 100")), nil, nil
@@ -292,12 +292,18 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	})
 
 	// 14. Set Group Color RGB
+	type setGroupColorRGBArgs struct {
+		GroupID string `json:"group_id" jsonschema:"description:The UUID of the room or zone (use get_all_rooms, get_all_zones, or get_all_groups to discover IDs)"`
+		Red     int    `json:"red" jsonschema:"description:Red value 0-255"`
+		Green   int    `json:"green" jsonschema:"description:Green value 0-255"`
+		Blue    int    `json:"blue" jsonschema:"description:Blue value 0-255"`
+	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_group_color_rgb",
-		Description: "Set color for all lights in a group using RGB values.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args setColorRGBArgs) (*mcp.CallToolResult, any, error) {
+		Description: "Set all lights in a room or zone to a specific RGB color. For common colors, consider set_group_color_preset instead. Also turns lights on.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args setGroupColorRGBArgs) (*mcp.CallToolResult, any, error) {
 		xy := color.RGBToXY(args.Red, args.Green, args.Blue)
-		groupedLightID, err := client.GetGroupedLightByResourceID(args.LightID) // setColorRGBArgs uses LightID field
+		groupedLightID, err := client.GetGroupedLightByResourceID(args.GroupID)
 		if err != nil {
 			return errorResult(err), nil, nil
 		}
@@ -315,13 +321,13 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 		if err != nil {
 			return errorResult(err), nil, nil
 		}
-		return successResult(fmt.Sprintf("Group %s color set to RGB(%d, %d, %d).", args.LightID, args.Red, args.Green, args.Blue)), nil, nil
+		return successResult(fmt.Sprintf("Group %s color set to RGB(%d, %d, %d).", args.GroupID, args.Red, args.Green, args.Blue)), nil, nil
 	})
 
 	// 15. Get All Scenes
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_all_scenes",
-		Description: "Get information about all scenes.",
+		Description: "List all scenes with their IDs and names. Scenes are pre-configured lighting states (colors, brightness) for groups of lights. Call this to discover scene IDs for set_scene.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		scenes, err := client.GetScenes()
 		if err != nil {
@@ -333,11 +339,11 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 16. Set Scene
 	type setSceneArgs struct {
-		SceneID string `json:"scene_id" jsonschema:"description:The UUID of the scene"`
+		SceneID string `json:"scene_id" jsonschema:"description:The UUID of the scene (use get_all_scenes to discover available scenes)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_scene",
-		Description: "Apply a scene.",
+		Description: "Activate a pre-configured scene. Scenes apply saved colors and brightness to multiple lights at once. Use get_all_scenes to discover available scenes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setSceneArgs) (*mcp.CallToolResult, any, error) {
 		update := openhue.ScenePut{
 			Recall: &openhue.SceneRecall{
@@ -353,11 +359,11 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 17. Find Light By Name
 	type findByNameArgs struct {
-		Name string `json:"name" jsonschema:"description:Partial or full name to search for"`
+		Name string `json:"name" jsonschema:"description:Partial or full name to search for (case-insensitive)"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "find_light_by_name",
-		Description: "Find lights by searching their names.",
+		Description: "Search lights by name (case-insensitive partial match). Faster than get_all_lights when you know the light's name. Returns matching lights with their UUIDs.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args findByNameArgs) (*mcp.CallToolResult, any, error) {
 		lights, err := client.GetLights()
 		if err != nil {
@@ -381,7 +387,7 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 	// 18. Alert Light
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "alert_light",
-		Description: "Make a light flash briefly to identify it.",
+		Description: "Make a light flash briefly (breathe effect) to help identify which physical light corresponds to an ID.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args lightIDArgs) (*mcp.CallToolResult, any, error) {
 		update := openhue.LightPut{
 			Alert: &openhue.Alert{Action: ptr("breathe")},
@@ -395,12 +401,12 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 
 	// 19. Set Light Effect
 	type setEffectArgs struct {
-		LightID string `json:"light_id" jsonschema:"description:The UUID of the light"`
-		Effect  string `json:"effect" jsonschema:"description:Effect type (none or colorloop)"`
+		LightID string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
+		Effect  string `json:"effect" jsonschema:"description:Effect type: 'colorloop' cycles through colors, 'none' stops effects"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_light_effect",
-		Description: "Set a dynamic effect on a light.",
+		Description: "Set a dynamic effect on a light. Use 'colorloop' for continuous color cycling, 'none' to stop. Also turns the light on.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setEffectArgs) (*mcp.CallToolResult, any, error) {
 		update := openhue.LightPut{
 			Effects: &openhue.Effects{Effect: ptr(openhue.SupportedEffects(args.Effect))},
@@ -413,26 +419,14 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 		return successResult(fmt.Sprintf("Effect %s set on light %s.", args.Effect, args.LightID)), nil, nil
 	})
 
-	// 20. Refresh Lights
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "refresh_lights",
-		Description: "Refresh information for all lights.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
-		lights, err := client.GetLights()
-		if err != nil {
-			return errorResult(err), nil, nil
-		}
-		return successResult(fmt.Sprintf("Refreshed information for %d lights.", len(lights))), nil, nil
-	})
-
-	// 21. Set Color Preset
+	// 20. Set Color Preset
 	type setPresetArgs struct {
-		LightID string `json:"light_id" jsonschema:"description:The UUID of the light"`
-		Preset  string `json:"preset" jsonschema:"description:Color preset name (warm, cool, daylight, concentration, relax, reading, energize, red, green, blue, purple, orange)"`
+		LightID string `json:"light_id" jsonschema:"description:The UUID of the light (use get_all_lights or find_light_by_name to discover IDs)"`
+		Preset  string `json:"preset" jsonschema:"description:Preset name - Activity: concentration (bright cool), relax (dim warm), reading (medium neutral), energize (bright cool). White: warm, cool, daylight. Color: red, green, blue, purple, orange"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_color_preset",
-		Description: "Apply a color preset to a light.",
+		Description: "Apply a named color/mood preset to a light. Easier than specifying RGB or temperature values. Also turns the light on.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setPresetArgs) (*mcp.CallToolResult, any, error) {
 		update, err := getPresetLightPut(args.Preset)
 		if err != nil {
@@ -445,14 +439,14 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 		return successResult(fmt.Sprintf("Applied preset %s to light %s.", args.Preset, args.LightID)), nil, nil
 	})
 
-	// 22. Set Group Color Preset
+	// 21. Set Group Color Preset
 	type setGroupPresetArgs struct {
-		GroupID string `json:"group_id" jsonschema:"description:The UUID of the group"`
-		Preset  string `json:"preset" jsonschema:"description:Color preset name (warm, cool, daylight, concentration, relax, reading, energize, red, green, blue, purple, orange)"`
+		GroupID string `json:"group_id" jsonschema:"description:The UUID of the room or zone (use get_all_rooms, get_all_zones, or get_all_groups to discover IDs)"`
+		Preset  string `json:"preset" jsonschema:"description:Preset name - Activity: concentration (bright cool), relax (dim warm), reading (medium neutral), energize (bright cool). White: warm, cool, daylight. Color: red, green, blue, purple, orange"`
 	}
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "set_group_color_preset",
-		Description: "Apply a color preset to a group.",
+		Description: "Apply a named color/mood preset to all lights in a room or zone. Easier than specifying RGB values. Also turns lights on.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args setGroupPresetArgs) (*mcp.CallToolResult, any, error) {
 		update, err := getPresetGroupedLightPut(args.Preset)
 		if err != nil {
@@ -469,10 +463,10 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 		return successResult(fmt.Sprintf("Applied preset %s to group %s.", args.Preset, args.GroupID)), nil, nil
 	})
 
-	// 23. Get Motion Sensors
+	// 22. Get Motion Sensors
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_motion_sensors",
-		Description: "Get information about all motion sensors.",
+		Description: "List all motion sensors with their IDs, names, and current motion detection state.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		sensors, err := client.GetMotionSensors()
 		if err != nil {
@@ -482,10 +476,10 @@ func RegisterHandlers(server *mcp.Server, client *hue.Client) {
 		return successResult(string(data)), nil, nil
 	})
 
-	// 24. Get Temperature Sensors
+	// 23. Get Temperature Sensors
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_temperature_sensors",
-		Description: "Get information about all temperature sensors.",
+		Description: "List all temperature sensors with their IDs, names, and current temperature readings.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args emptyArgs) (*mcp.CallToolResult, any, error) {
 		sensors, err := client.GetTemperatureSensors()
 		if err != nil {
@@ -543,6 +537,12 @@ func getPresetLightPut(preset string) (*openhue.LightPut, error) {
 	case "blue":
 		xy := color.RGBToXY(0, 0, 255)
 		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
+	case "purple":
+		xy := color.RGBToXY(128, 0, 255)
+		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
+	case "orange":
+		xy := color.RGBToXY(255, 165, 0)
+		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
 	default:
 		return nil, fmt.Errorf("unknown preset: %s", preset)
 	}
@@ -578,6 +578,12 @@ func getPresetGroupedLightPut(preset string) (*openhue.GroupedLightPut, error) {
 		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
 	case "blue":
 		xy := color.RGBToXY(0, 0, 255)
+		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
+	case "purple":
+		xy := color.RGBToXY(128, 0, 255)
+		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
+	case "orange":
+		xy := color.RGBToXY(255, 165, 0)
 		update.Color = &openhue.Color{Xy: &openhue.GamutPosition{X: ptr(float32(xy.X)), Y: ptr(float32(xy.Y))}}
 	default:
 		return nil, fmt.Errorf("unknown preset: %s", preset)

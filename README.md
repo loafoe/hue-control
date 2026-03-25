@@ -19,10 +19,19 @@ A robust tool for Philips Hue, written in Go. It operates in two modes:
 - [Go 1.26+](https://go.dev/dl/)
 - A Philips Hue Bridge on your local network.
 
-### Build
+### Go Install
 
 ```bash
-cd go
+go install github.com/loafoe/hue-control/cmd/hue-control@latest
+```
+
+This installs the `hue-control` binary to your `$GOPATH/bin` (or `$HOME/go/bin` by default).
+
+### Build from Source
+
+```bash
+git clone https://github.com/loafoe/hue-control.git
+cd hue-control
 go build -o hue-control cmd/hue-control/main.go
 ```
 
