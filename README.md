@@ -2,7 +2,7 @@
 
 A robust tool for Philips Hue, written in Go. It operates in two modes:
 1. **CLI Mode:** Directly control your lights from the command line.
-2. **MCP Mode:** A Model Context Protocol (MCP) server for AI assistants (like Claude) to interact with your Hue system.
+2. **MCP Mode:** A Model Context Protocol (MCP) server for AI assistants (like Gemini, Claude, LMStudio) to interact with your Hue system.
 
 ## Features
 
