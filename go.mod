@@ -1,6 +1,6 @@
 module github.com/loafoe/hue-control
 
-go 1.26.5
+go 1.27.1
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.6.1
