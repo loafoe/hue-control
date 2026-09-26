@@ -294,7 +294,7 @@ func main() {
 	}
 
 	serveCmd.Flags().IntVar(&listenPort, "port", 9099, "HTTP listen port")
-	serveCmd.Flags().StringVar(&listenAddr, "listen", "0.0.0.0", "HTTP listen address")
+	serveCmd.Flags().StringVar(&listenAddr, "listen", "", "HTTP listen address (empty = all interfaces, dual-stack)")
 
 	rootCmd.AddCommand(mcpCmd, serveCmd, lightsCmd, sensorsCmd)
 
