@@ -1,0 +1,8 @@
+.git
+.gitignore
+.claude/
+plan.md
+README.md
+LICENSE
+*.md
+.DS_Store

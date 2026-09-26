@@ -82,10 +82,17 @@ func main() {
 				log.Fatalf("Failed to initialize Hue client: %v", err)
 			}
 
+			// SchemaCache avoids repeated reflection when tools are
+			// re-registered across requests in stateless deployments.
+			schemaCache := mcp.NewSchemaCache()
+
 			server := mcp.NewServer(&mcp.Implementation{
 				Name:    "Philips Hue Controller (Go)",
 				Version: "0.1.0",
-			}, nil)
+			}, &mcp.ServerOptions{
+				Instructions: "Control Philips Hue lights, groups, scenes, and sensors.",
+				SchemaCache:  schemaCache,
+			})
 
 			hue_mcp.RegisterHandlers(server, hueClient)
 
