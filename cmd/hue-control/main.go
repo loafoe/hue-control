@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/loafoe/hue-control/pkg/config"
 	"github.com/loafoe/hue-control/pkg/hue"
@@ -17,9 +19,11 @@ import (
 )
 
 var (
-	bridgeIP   string
-	apiKey     string
-	jsonOutput bool
+	bridgeIP     string
+	apiKey       string
+	jsonOutput   bool
+	listenAddr   string
+	listenPort   int
 )
 
 func main() {
@@ -243,7 +247,56 @@ func main() {
 
 	sensorsCmd.AddCommand(listMotionCmd, listTempCmd)
 
-	rootCmd.AddCommand(mcpCmd, lightsCmd, sensorsCmd)
+	// Serve Command (HTTP streamable MCP)
+	schemaCache := mcp.NewSchemaCache()
+	var serveCmd = &cobra.Command{
+		Use:   "serve",
+		Short: "Start the MCP server in HTTP streamable mode",
+		Long:  `Starts an HTTP server serving MCP over the streamable HTTP transport. Use this for remote MCP access.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			addr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
+
+			getServer := func(r *http.Request) *mcp.Server {
+				hueClient, err := hue.NewClient(bridgeIP, apiKey)
+				if err != nil {
+					log.Printf("Failed to initialize Hue client: %v", err)
+					return nil
+				}
+
+				srv := mcp.NewServer(&mcp.Implementation{
+					Name:    "Philips Hue Controller (Go)",
+					Version: "0.1.0",
+				}, &mcp.ServerOptions{
+					Instructions: "Control Philips Hue lights, groups, scenes, and sensors.",
+					SchemaCache:  schemaCache,
+				})
+
+				hue_mcp.RegisterHandlers(srv, hueClient)
+				return srv
+			}
+
+			handler := mcp.NewStreamableHTTPHandler(getServer, &mcp.StreamableHTTPOptions{
+				Stateless:    true,
+				JSONResponse: true,
+			})
+
+			httpServer := &http.Server{
+				Addr:              addr,
+				Handler:           handler,
+				ReadHeaderTimeout: 10 * time.Second,
+			}
+
+			log.Printf("Starting MCP HTTP server on %s", addr)
+			if err := httpServer.ListenAndServe(); err != nil {
+				log.Fatalf("Error serving HTTP: %v", err)
+			}
+		},
+	}
+
+	serveCmd.Flags().IntVar(&listenPort, "port", 9099, "HTTP listen port")
+	serveCmd.Flags().StringVar(&listenAddr, "listen", "0.0.0.0", "HTTP listen address")
+
+	rootCmd.AddCommand(mcpCmd, serveCmd, lightsCmd, sensorsCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
