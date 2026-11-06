@@ -1,5 +1,5 @@
 # Stage 1: Build the Go binary
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:87c65a688975c0b1d4585d204874c45ca78354670e3a5f11368c5a492303d696 AS builder
 
 RUN apk add --no-cache git ca-certificates
 
